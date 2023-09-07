@@ -136,6 +136,7 @@ app.use(AAA.ensureAuthenticated);
 
 app.use(async function (req, _res, next) {
 	let user_id;
+	// req.permissions = [];
 	if (req.session.user) {
 		user_id = getUserIdFromSAMLUserId(req);
 		req.permissions = req.session.user.perms;
@@ -150,7 +151,9 @@ app.use(async function (req, _res, next) {
 	await redisAsyncClient.select(12);
 	const perms = await redisAsyncClient.get(`${user_id}-perms`);
 
-	if (perms) {
+	console.log("perms=", perms)
+	//console.log("perms.length=", perms.length)
+	if (perms && 0 != perms.length && req.permissions && 0 != req.permissions.length)  {
 		req.permissions = req.permissions.concat(JSON.parse(perms));
 	}
 

@@ -1,28 +1,51 @@
-ARG BASE_IMAGE="registry1.dso.mil/ironbank/opensource/nodejs/nodejs18:18.9.0"
+#################################################################
+# Summary: This Dockerfile builds frontend and backend for gc-web
+# It will run the command to start frontend, backend accordingly
+# Ex from docker-compose.yml:
+#    command:
+#      - |
+#        cd /opt/app-root/src/frontend
+#        npm run start
+#
+# Or,
+#     command:
+#      - |
+#        cd /opt/app-root/src/backend
+#        node index.js
+
+ARG BASE_IMAGE="registry.redhat.io/rhel9/nodejs-18:1-59"
 FROM $BASE_IMAGE AS base
-
-USER root
-
-RUN yum install -y \
-    git \
-    make
-
-RUN yum -y update libsolv libgcc libstdc++ cryptsetup-libs cyrus-sasl-lib gzip zlib nss xz-libs systemd libksba python3-libxml2 libxml2 libcurl curl
-
-COPY ./postgres/tmp/RPM-GPG-KEY-PGDG-11 \
-    ./postgres/tmp/postgresql11-server.rpm \
-    ./postgres/tmp/postgresql11.rpm \
-    ./postgres/tmp/postgresql11-libs.rpm \
-    ./postgres/tmp/postgresql11-contrib.rpm \
-    /tmp/
-
-RUN rpm --import /tmp/RPM-GPG-KEY-PGDG-11 && \
-    dnf install -y --nodocs glibc-langpack-en /tmp/postgresql11-server.rpm /tmp/postgresql11.rpm /tmp/postgresql11-libs.rpm /tmp/postgresql11-contrib.rpm && \
-    dnf clean all && \
-    rm -rf /var/cache/dnf
 
 ARG APP_UID=1000
 ARG APP_GID=1000
+
+USER root
+
+RUN npm uninstall -g yarn pnpm
+RUN npm install -g corepack
+RUN npm install -g null
+RUN corepack prepare --all
+
+RUN groupadd --gid ${APP_GID} gamechanger
+RUN useradd --gid ${APP_GID} --uid ${APP_UID} gamechanger
+RUN yum install -y \
+    git \
+    make \
+    net-tools \
+    iproute \
+    iputils \
+    python3 \
+    pigz \
+    gcc
+
+RUN yum -y update libsolv libgcc libstdc++ cryptsetup-libs cyrus-sasl-lib gzip zlib nss xz-libs systemd libksba python3-libxml2 libxml2 libcurl curl
+
+RUN dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+RUN dnf install -y --nodocs glibc-langpack-en
+RUN dnf install -y --nodocs postgresql13-server
+
+RUN dnf clean all && \
+    rm -rf /var/cache/dnf
 
 # key dirs & globally usable binaries/packages
 ENV APP_ROOT="/opt/app-root"
@@ -36,100 +59,102 @@ ENV NODE_MODULES_DIR="/usr/local/lib/node_modules"
 ENV NPM_DIR="/usr/local/lib/node_modules/npm"
 ENV LOGS="/logs/uotapp"
 
+ENV APP_DIR_SECRETS="${APP_ROOT}/src/secrets"
+ENV APP_POSTGRES_DIR="${APP_DIR}/postgres"
+
 RUN mkdir -p \
     "${APP_DIR}" \
+    "${APP_DIR_SECRETS}" \
     "${APP_FRONTEND_DIR}" \
     "${APP_BACKEND_DIR}" \
     "${APP_SHARED_DIR}" \
+    "${APP_POSTGRES_DIR}" \
     "${LOGS}" \
     && chown -R "${APP_UID}":"${APP_GID}" "${APP_ROOT}" \
     && chown -R "${APP_UID}":"${APP_GID}" "${LOGS}"
-
-# RUN cd "$NODE_MODULES_DIR" \
-#     && npm install -g npm@9.4.1
-
-# RUN cd "$NPM_DIR" \
-#     && npm install query-string@7.1.3 --save-exact
 
 USER "${APP_UID}":"${APP_GID}"
 
 RUN cd "$APP_SHARED_DIR" \
     && npm install query-string@7.1.3 --save-exact \
-    && npm install nodemon sequelize-cli
+    && yarn add -g nodemon sequelize-cli
 
-FROM base AS builder
+# Generate cert in host machine before running this
+COPY --chown="${APP_UID}":"${APP_GID}" ./backend/tls_cert.cer "${APP_DIR_SECRETS}/tls_cert.cer"
+COPY --chown="${APP_UID}":"${APP_GID}" ./backend/tls_key.key "${APP_DIR_SECRETS}/tls_key.key"
+COPY --chown="${APP_UID}":"${APP_GID}" ./backend/ca_bundle.pem "${APP_DIR_SECRETS}/ca_bundle.pem"
+COPY --chown="${APP_UID}":"${APP_GID}" ./backend/pubkey.key "${APP_DIR_SECRETS}/pubkey.key"
 
+# End of base stage
+###################################
+
+
+##################################
+# frontend stage
+
+FROM base as frontend
 ARG APP_UID=1000
 ARG APP_GID=1000
-
-USER "${APP_UID}":"${APP_GID}"
-
-COPY --chown="${APP_UID}":"${APP_GID}" ./frontend/package.json "${APP_FRONTEND_DIR}/package.json"
 
 ARG NPM_PROFILE="dod-advana"
 ARG NPM_REGISTRY="https://npm.pkg.github.com"
 ARG NPM_AUTH_TOKEN=""
 
-RUN cd "${APP_FRONTEND_DIR}" && \
-    ([ -n "$NPM_AUTH_TOKEN" ] && ( \
-    _registry_fqdn=$(echo -n ${NPM_REGISTRY} | sed -E 's/^https?:\/\///') && \
-    echo "always-auth=true" >> .npmrc && \
-    echo "@${NPM_PROFILE}:registry=${NPM_REGISTRY}" >> .npmrc && \
-    echo "//${_registry_fqdn}/:_authToken=${NPM_AUTH_TOKEN}" > .npmrc \
-    )) && \
-    yarn config set @dod-advana:registry ${NPM_REGISTRY} && \
-    # yarn config set registry "https://registry.yarnpkg.com" && \
-    yarn install --production
+USER "${APP_UID}":"${APP_GID}"
+WORKDIR "${APP_FRONTEND_DIR}"
+COPY --chown="${APP_UID}":"${APP_GID}" ./frontend/package.json "${APP_FRONTEND_DIR}/package.json"
+COPY --chown="${APP_UID}":"${APP_GID}" ./frontend/.npmrc.template "${APP_FRONTEND_DIR}/.npmrc.template"
 
-COPY --chown="${APP_UID}":"${APP_GID}" ./frontend "${APP_FRONTEND_DIR}"
+# NPM_AUTH_TOKEN is set in docker-compose/build.yaml
+RUN cat .npmrc.template | envsubst > .npmrc
+RUN yarn install --production
 
-RUN cd "${APP_FRONTEND_DIR}" && \
-    npm run build
+# Now copy other files needed for building
+COPY --chown="${APP_UID}":"${APP_GID}" ./frontend/cypress "${APP_FRONTEND_DIR}/cypress"
+COPY --chown="${APP_UID}":"${APP_GID}" ./frontend/public "${APP_FRONTEND_DIR}/public"
+COPY --chown="${APP_UID}":"${APP_GID}" ./frontend/src "${APP_FRONTEND_DIR}/src"
+COPY --chown="${APP_UID}":"${APP_GID}" ./frontend/test "${APP_FRONTEND_DIR}/test"
+COPY --chown="${APP_UID}":"${APP_GID}" ./frontend/config-overrides.js "${APP_FRONTEND_DIR}/config-overrides.js"
+COPY --chown="${APP_UID}":"${APP_GID}" ./frontend/cypress.config.js "${APP_FRONTEND_DIR}/cypress.config.js"
+RUN yarn build
 
-FROM base
 
+##################################
+# DEPLOY STAGE
+FROM base as deploy
 ARG APP_UID=1000
 ARG APP_GID=1000
 
+ARG NPM_PROFILE="dod-advana"
+ARG NPM_REGISTRY="https://npm.pkg.github.com"
+ARG NPM_AUTH_TOKEN=""
+
 USER "${APP_UID}":"${APP_GID}"
+WORKDIR "${APP_BACKEND_DIR}"
 
 COPY --chown="${APP_UID}":"${APP_GID}" ./backend/package.json "${APP_BACKEND_DIR}/package.json"
+COPY --chown="${APP_UID}":"${APP_GID}" ./backend/.npmrc.template "${APP_BACKEND_DIR}/.npmrc.template"
 
-ARG NPM_PROFILE="dod-advana"
-ARG NPM_REGISTRY="https://npm.pkg.github.com"
-ARG NPM_AUTH_TOKEN=""
+# NPM_AUTH_TOKEN is set in docker-compose/build.yaml
+RUN cat .npmrc.template | envsubst > .npmrc
+RUN yarn install --production
 
-RUN cd "${APP_BACKEND_DIR}" && \
-    ([ -n "$NPM_AUTH_TOKEN" ] && ( \
-    _registry_fqdn=$(echo -n ${NPM_REGISTRY} | sed -E 's/^https?:\/\///') && \
-    echo "always-auth=true" >> .npmrc && \
-    echo "@${NPM_PROFILE}:registry=${NPM_REGISTRY}" >> .npmrc && \
-    echo "//${_registry_fqdn}/:_authToken=${NPM_AUTH_TOKEN}" >> .npmrc && \
-    echo "legacy-peer-deps=true" >> .npmrc \
-    )) && \
-    yarn install --production
-
-USER root
-
-RUN yum remove git -y
-
-USER "${APP_UID}":"${APP_GID}"
-
-USER root
-
-RUN yum remove git -y
-
-USER "${APP_UID}":"${APP_GID}"
-
-COPY --chown="${APP_UID}":"${APP_GID}" ./backend "${APP_BACKEND_DIR}"
-COPY --from=builder --chown="${APP_UID}":"${APP_GID}" "${APP_FRONTEND_DIR}/build" "${APP_BACKEND_DIR}/build"
-
-RUN cd "${APP_BACKEND_DIR}"
-
-RUN rm -rf /home/node/.cache
+COPY --from=frontend --chown="${APP_UID}":"${APP_GID}" "${APP_FRONTEND_DIR}/build" "${APP_BACKEND_DIR}/build"
+# Now copy other files needed for running
+COPY --chown="${APP_UID}":"${APP_GID}" ./backend/node_app "${APP_BACKEND_DIR}/node_app"
+COPY --chown="${APP_UID}":"${APP_GID}" ./backend/scripts "${APP_BACKEND_DIR}/scripts"
+COPY --chown="${APP_UID}":"${APP_GID}" ./backend/static "${APP_BACKEND_DIR}/static"
+COPY --chown="${APP_UID}":"${APP_GID}" ./backend/security_scan "${APP_BACKEND_DIR}/security_can"
+COPY --chown="${APP_UID}":"${APP_GID}" ./backend/test "${APP_BACKEND_DIR}/test"
+COPY --chown="${APP_UID}":"${APP_GID}" ./backend/index.js "${APP_BACKEND_DIR}/index.js"
+COPY --chown="${APP_UID}":"${APP_GID}" ./backend/.env "${APP_BACKEND_DIR}/.env"
+COPY --chown="${APP_UID}":"${APP_GID}" ./backend/.sequelize-game_changer "${APP_BACKEND_DIR}/.sequelize-game_changer"
+COPY --chown="${APP_UID}":"${APP_GID}" ./backend/.sequelize-gc-orchestration "${APP_BACKEND_DIR}/.sequelize-gc-orchestration"
+COPY --chown="${APP_UID}":"${APP_GID}" ./backend/.sequelize-jbook "${APP_BACKEND_DIR}/.sequelize-jbook"
+COPY --chown="${APP_UID}":"${APP_GID}" ./backend/.sequelizerc "${APP_BACKEND_DIR}/.sequelizerc"
 
 # http & https
 EXPOSE 8990 8443
 WORKDIR "${APP_BACKEND_DIR}"
-ENTRYPOINT ["node"]
-CMD ["index.js"]
+ENTRYPOINT ['/bin/bash', '-ec']
+CMD ['node', 'index.js']
