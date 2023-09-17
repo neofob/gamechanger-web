@@ -33,10 +33,10 @@ class HandlerFactory {
 					dataModule: m.data_module,
 				};
 				try {
-					this.searchHandlerMap[m.search_module] = require(`../modules/${m.search_module}`);
-					this.exportHandlerMap[m.export_module] = require(`../modules/${m.export_module}`);
-					this.graphHandlerMap[m.graph_module] = require(`../modules/${m.graph_module}`);
-					this.dataHandlerMap[m.data_module] = require(`../modules/${m.data_module}`);
+					this.searchHandlerMap[m.search_module] = require(`/opt/app-root/src/backend/node_app/modules/policy/policySearchHandler`);
+					this.exportHandlerMap[m.export_module] = require(`/opt/app-root/src/backend/node_app/modules/policy/policyExportHandler`);
+					this.graphHandlerMap[m.graph_module] = require(`/opt/app-root/src/backend/node_app/modules/policy/policyGraphHandler`);
+					this.dataHandlerMap[m.data_module] = require(`/opt/app-root/src/backend/node_app/modules/simple/simpleDataHandler`);
 				} catch (err) {
 					console.log(err);
 				}

@@ -57,6 +57,10 @@ class AppSettingsController {
 	 */
 	async getMode(key, req, res) {
 		let userId = req.session?.user?.id || req.get('SSL_CLIENT_S_DN_CN');
+    console.error("GET MODE for KEY: ");
+    console.error(key);
+    console.error("USER ID is: ");
+    console.error(userId);
 		try {
 			const mode = await this.appSettings.findOrCreate({
 				attributes: ['value'],
@@ -78,6 +82,10 @@ class AppSettingsController {
 	 */
 	async setMode(key, req, res) {
 		let userId = req.session?.user?.id || req.get('SSL_CLIENT_S_DN_CN');
+    console.error("SET MODE for KEY: ");
+    console.error(key);
+    console.error("USER ID is: ");
+    console.error(userId);
 		const { value } = req.body;
 		try {
 			let updateValues = { value };

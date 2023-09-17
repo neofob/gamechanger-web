@@ -75,6 +75,7 @@ class MLApiClient {
 	async getExpandedSearchTerms(termsList, userId = 'unknown', qe_model = undefined) {
 		const data = { termsList, docIdsOnly: true };
 		if (qe_model) data['qe_model'] = qe_model;
+    this.logger.error(termsList, "termsList is: ");
 		return this.postData('expandTerms', userId, data);
 	}
 
@@ -154,7 +155,8 @@ class MLApiClient {
 			let url = MLRoutes[key];
 
 			if (queryString) url += queryString;
-			console.log(url, postData);
+			this.logger.error(url, "URL is: ");
+			this.logger.error(postData, "Post Data is: ");
 			const { data } = await this.axios({
 				url,
 				method: 'post',

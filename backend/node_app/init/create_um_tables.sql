@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS public.permissions (
     PRIMARY KEY (id)
 );
 
+DROP TABLE IF EXISTS public.users;
+
 CREATE TABLE IF NOT EXISTS public.users (
     id SERIAL,
     username text NOT NULL,

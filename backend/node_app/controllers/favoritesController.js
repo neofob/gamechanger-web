@@ -82,10 +82,10 @@ class FavoritesController {
 
 			if (is_favorite) {
 				const [favorite] = await this.favoriteDocument.findOrCreate({
-					where: { user_id: getUserIdFromSAMLUserId(req), filename: filename },
+					where: { username: getUserIdFromSAMLUserId(req), filename: filename },
 					defaults: {
-						user_id: getUserIdFromSAMLUserId(req),
-						new_user_id: getUserIdFromSAMLUserId(req),
+						username: getUserIdFromSAMLUserId(req),
+						new_username: getUserIdFromSAMLUserId(req),
 						filename: filename,
 						favorite_name: favorite_name,
 						favorite_summary: favorite_summary,
@@ -98,7 +98,7 @@ class FavoritesController {
 			} else {
 				const deleted = this.favoriteDocument.destroy({
 					where: {
-						user_id: getUserIdFromSAMLUserId(req),
+						username: getUserIdFromSAMLUserId(req),
 						filename: filename,
 					},
 				});
@@ -125,10 +125,10 @@ class FavoritesController {
 
 			if (is_favorite) {
 				const [favorite] = await this.favoriteSearch.findOrCreate({
-					where: { user_id: getUserIdFromSAMLUserId(req), tiny_url: tiny_url },
+					where: { username: getUserIdFromSAMLUserId(req), tiny_url: tiny_url },
 					defaults: {
-						user_id: getUserIdFromSAMLUserId(req),
-						new_user_id: getUserIdFromSAMLUserId(req),
+						username: getUserIdFromSAMLUserId(req),
+						new_username: getUserIdFromSAMLUserId(req),
 						search_name: search_name,
 						search_summary: search_summary,
 						search_text: search_text,
@@ -141,7 +141,7 @@ class FavoritesController {
 			} else {
 				const deleted = this.favoriteSearch.destroy({
 					where: {
-						user_id: getUserIdFromSAMLUserId(req),
+						username: getUserIdFromSAMLUserId(req),
 						tiny_url: tiny_url,
 					},
 				});
@@ -163,10 +163,10 @@ class FavoritesController {
 
 			if (is_favorite) {
 				const [favorite] = await this.favoriteTopic.findOrCreate({
-					where: { user_id: getUserIdFromSAMLUserId(req), topic_name: topic },
+					where: { username: getUserIdFromSAMLUserId(req), topic_name: topic },
 					defaults: {
-						user_id: getUserIdFromSAMLUserId(req),
-						new_user_id: getUserIdFromSAMLUserId(req),
+						username: getUserIdFromSAMLUserId(req),
+						new_username: getUserIdFromSAMLUserId(req),
 						topic_name: topic,
 						topic_summary: topicSummary,
 						is_clone: false,
@@ -176,7 +176,7 @@ class FavoritesController {
 			} else {
 				const deleted = this.favoriteTopic.destroy({
 					where: {
-						user_id: getUserIdFromSAMLUserId(req),
+						username: getUserIdFromSAMLUserId(req),
 						topic_name: topic,
 					},
 				});
@@ -198,10 +198,10 @@ class FavoritesController {
 
 			if (is_favorite) {
 				const [favorite] = await this.favoriteOrganization.findOrCreate({
-					where: { user_id: getUserIdFromSAMLUserId(req), organization_name: organization },
+					where: { username: getUserIdFromSAMLUserId(req), organization_name: organization },
 					defaults: {
-						user_id: getUserIdFromSAMLUserId(req),
-						new_user_id: getUserIdFromSAMLUserId(req),
+						username: getUserIdFromSAMLUserId(req),
+						new_username: getUserIdFromSAMLUserId(req),
 						organization_name: organization,
 						organization_summary: organizationSummary,
 						is_clone: false,
@@ -211,7 +211,7 @@ class FavoritesController {
 			} else {
 				const deleted = this.favoriteOrganization.destroy({
 					where: {
-						user_id: getUserIdFromSAMLUserId(req),
+						username: getUserIdFromSAMLUserId(req),
 						organization_name: organization,
 					},
 				});
@@ -233,9 +233,9 @@ class FavoritesController {
 
 			if (create) {
 				const [group] = await this.favoriteGroup.findOrCreate({
-					where: { user_id: getUserIdFromSAMLUserId(req), group_name: group_name },
+					where: { username: getUserIdFromSAMLUserId(req), group_name: group_name },
 					defaults: {
-						user_id: getUserIdFromSAMLUserId(req),
+						username: getUserIdFromSAMLUserId(req),
 						group_type: group_type,
 						group_name: group_name,
 						group_description: group_description,
@@ -272,7 +272,7 @@ class FavoritesController {
 			const { groupId, documentIds } = req.body;
 			const docObjects = documentIds.map((docId) => {
 				return {
-					user_id: getUserIdFromSAMLUserId(req),
+					username: getUserIdFromSAMLUserId(req),
 					favorite_group_id: groupId,
 					favorite_document_id: docId,
 				};
@@ -350,7 +350,7 @@ class FavoritesController {
 			// convert a tiny url to a search
 			const history = await this.gcHistory.findOne({
 				where: {
-					user_id: favorite.user_id,
+					username: favorite.username,
 					tiny_url: favorite.tiny_url,
 				},
 				order: [['run_at', 'DESC']],
@@ -407,7 +407,7 @@ class FavoritesController {
 				await this.sequelize.transaction(async (t) => {
 					await favorite.save({ transaction: t });
 					const user = await this.gcUser.findOne({
-						where: { user_id: favorite.user_id },
+						where: { username: favorite.username },
 						transaction: t,
 						// there is a race condition between this select and the notification json modification
 						// and update so we lock the row for update
@@ -444,7 +444,7 @@ class FavoritesController {
 				{ updated_results: false },
 				{
 					where: {
-						user_id: getUserIdFromSAMLUserId(req),
+						username: getUserIdFromSAMLUserId(req),
 						tiny_url: tinyurl,
 					},
 				}

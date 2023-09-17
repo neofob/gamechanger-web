@@ -8,52 +8,39 @@ module.exports = (sequelize, DataTypes) => {
 				autoIncrement: true,
 				primaryKey: true,
 			},
-			user_id: {
+			username: {
 				type: DataTypes.TEXT,
 				unique: true,
 			},
-			cn: {
+			displayname: {
 				type: DataTypes.TEXT,
 			},
-			first_name: {
-				type: DataTypes.TEXT,
+			lastlogin: {
+				type: DataTypes.DATE,
 			},
-			last_name: {
-				type: DataTypes.TEXT,
+		  sandbox_id: {
+				type: DataTypes.INTEGER,
 			},
-			organization: {
+			disabled: {
+				type: DataTypes.BOOLEAN,
+			},
+			createdAt: {
+				type: DataTypes.DATE,
+			},
+			updatedAt: {
+				type: DataTypes.DATE,
+			},
+			session_id: {
 				type: DataTypes.TEXT,
 			},
 			email: {
 				type: DataTypes.TEXT,
 			},
-			phone_number: {
-				type: DataTypes.TEXT,
-			},
-			sub_office: {
-				type: DataTypes.TEXT,
-			},
-			country: {
-				type: DataTypes.TEXT,
-			},
-			state: {
-				type: DataTypes.TEXT,
-			},
-			city: {
-				type: DataTypes.TEXT,
-			},
-			job_title: {
-				type: DataTypes.TEXT,
-			},
-			preferred_name: {
+			sub_agency: {
 				type: DataTypes.TEXT,
 			},
 			extra_fields: {
 				type: DataTypes.JSONB,
-			},
-			is_super_admin: {
-				type: DataTypes.BOOLEAN,
-				defaultValue: false,
 			},
 		},
 		{

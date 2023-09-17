@@ -42,7 +42,7 @@ module.exports = Object.freeze({
 				host: process.env.POSTGRES_HOST_GAME_CHANGER,
 				port: 5432,
 				dialect: 'postgres',
-				logging: false,
+				logging: true,
 			},
 			'gc-orchestration': {
 				username: process.env.POSTGRES_USER_GC_ORCHESTRATION,
@@ -92,7 +92,7 @@ module.exports = Object.freeze({
 		demoUser: process.env.GAMECHANGER_DEMO_USER?.trim() || '007',
 		disableStatsAPI: (process.env.GAMECHANGER_DISABLE_STATS_API?.trim() || 'false') === 'true',
 		isDecoupled: process.env.IS_DECOUPLED === 'true',
-		rootClone: process.env.REACT_APP_ROOT_CLONE,
+		rootClone: 'gamechanger',
 		version: 'game_changer',
 		impalaTable: 'policy_analytics.gc_history',
 		protocol: 'http',
@@ -122,7 +122,7 @@ module.exports = Object.freeze({
 		host: process.env.GAMECHANGER_ELASTICSEARCH_HOST || 'localhost',
 		port: process.env.GAMECHANGER_ELASTICSEARCH_PORT || '443',
 		user: process.env.GAMECHANGER_ELASTICSEARCH_USER ? process.env.GAMECHANGER_ELASTICSEARCH_USER : '',
-		password: process.env.GAMECHANGER_ELASTICSEARCH_PASSWORD || 'passowrd',
+		password: process.env.GAMECHANGER_ELASTICSEARCH_PASSWORD || 'password',
 		ca: process.env.GAMECHANGER_ELASTICSEARCH_CA
 			? process.env.GAMECHANGER_ELASTICSEARCH_CA.replace(/\\n/g, '\n')
 			: '',
@@ -136,7 +136,7 @@ module.exports = Object.freeze({
 	},
 	EDA_ELASTIC_SEARCH_OPTS: {
 		protocol: process.env.EDA_ELASTICSEARCH_PROTOCOL || 'https',
-		host: process.env.EDA_ELASTICSEARCH_HOST || 'loclhost',
+		host: process.env.EDA_ELASTICSEARCH_HOST || 'localhost',
 		port: process.env.EDA_ELASTICSEARCH_PORT || '443',
 		user: process.env.EDA_ELASTICSEARCH_USER ? process.env.EDA_ELASTICSEARCH_USER : '',
 		password: process.env.EDA_ELASTICSEARCH_PASSWORD || 'password',

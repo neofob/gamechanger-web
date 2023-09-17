@@ -1,37 +1,41 @@
 {
 	"presets": [
-		"@babel/env",
-		"@babel/react"
-	],
-    "plugins": [
-        [
-          "@babel/plugin-proposal-class-properties"
-        ],
-
-        // addresses ReferenceError: regeneratorRuntime is not defined
-        // https://github.com/facebook/jest/issues/3126
-        ["@babel/plugin-transform-runtime",
-          {
-            "regenerator": true
-          }
-        ],
-        [
-            "babel-plugin-import",
-            {
-                "libraryName": "@material-ui/core",
-                "libraryDirectory": "",
-                "camel2DashComponentName": false
-            },
-            "core"
-        ],
-        [
-            "babel-plugin-import",
-            {
-                "libraryName": "@material-ui/icons",
-                "libraryDirectory": "",
-                "camel2DashComponentName": false
-            },
-            "icons"
-        ]
-    ]
+			"@babel/preset-react",
+			"@babel/preset-env"
+		],
+		"plugins": [
+			[
+				"@babel/plugin-proposal-class-properties",
+				{
+					"loose": true
+				}
+			],
+			[
+				"@babel/plugin-syntax-class-properties"
+			],
+			[
+				"@babel/plugin-proposal-private-methods",
+				{
+					"loose": true
+				}
+			],
+			[
+				"babel-plugin-import",
+				{
+					"libraryName": "@material-ui/core",
+					"libraryDirectory": "",
+					"camel2DashComponentName": false
+				},
+				"core"
+			],
+			[
+				"babel-plugin-import",
+				{
+					"libraryName": "@material-ui/icons",
+					"libraryDirectory": "",
+					"camel2DashComponentName": false
+				},
+				"icons"
+			]
+		]
 }

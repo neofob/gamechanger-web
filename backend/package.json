@@ -27,8 +27,6 @@
 		"source-map-resolve": "0.6.0"
 	},
 	"dependencies": {
-		"@dod-advana/advana-api-auth": "1.0.1",
-		"@dod-advana/advana-logger": "0.0.4",
 		"@elastic/elasticsearch": "7.10.0",
 		"async-redis": "2.0.0",
 		"aws-sdk": "2.976.0",

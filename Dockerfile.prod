@@ -1,15 +1,27 @@
-ARG BASE_IMAGE="registry.access.redhat.com/ubi8/nodejs-14:1-50"
+#ARG BASE_IMAGE="registry.access.redhat.com/ubi8/nodejs-14:1-95"
+ARG BASE_IMAGE="registry.access.redhat.com/ubi8/nodejs-18:1-32"
 FROM $BASE_IMAGE AS base
 
+ARG APP_UID=1000
+ARG APP_GID=1000
+
 USER root
+
+RUN npm uninstall -g yarn pnpm
+
+RUN npm install -g corepack
+RUN npm install -g null
 
 RUN corepack prepare --all
 
 RUN yum install -y \
         git \
-        make
+        make \
+        net-tools \
+        iproute \
+        iputils
 
-RUN yum -y update libsolv libgcc libstdc++ cryptsetup-libs cyrus-sasl-lib gzip zlib nss xz-libs systemd
+RUN yum -y update libsolv libgcc libstdc++ cryptsetup-libs cyrus-sasl-lib gzip zlib nss xz-libs systemd libksba python3-libxml2 libxml2 libcurl curl bash
 
 COPY ./postgres/tmp/RPM-GPG-KEY-PGDG-11 \
      ./postgres/tmp/postgresql11-server.rpm \
@@ -18,29 +30,33 @@ COPY ./postgres/tmp/RPM-GPG-KEY-PGDG-11 \
      ./postgres/tmp/postgresql11-contrib.rpm \
      /tmp/
 
+
 RUN rpm --import /tmp/RPM-GPG-KEY-PGDG-11 && \
     dnf install -y --nodocs glibc-langpack-en /tmp/postgresql11-server.rpm /tmp/postgresql11.rpm /tmp/postgresql11-libs.rpm /tmp/postgresql11-contrib.rpm && \
     dnf clean all && \
     rm -rf /var/cache/dnf
 
-ARG APP_UID=1000
-ARG APP_GID=1000
-
 # key dirs & globally usable binaries/packages
 ENV APP_ROOT="/opt/app-root"
 ENV APP_DIR="${APP_ROOT}/src"
+ENV APP_DIR_SECRETS="${APP_ROOT}/src/secrets"
 ENV APP_BACKEND_DIR="${APP_DIR}/backend"
 ENV APP_FRONTEND_DIR="${APP_DIR}/frontend"
+ENV APP_POSTGRES_DIR="${APP_DIR}/postgres"
 ENV APP_SHARED_DIR="${APP_ROOT}/shared"
+ENV NODE_MODULES_DIR="/usr/local/lib/node_modules"
+ENV NPM_DIR="/usr/local/lib/node_modules/npm"
 ENV APP_SHARED_BIN="${APP_SHARED_DIR}/node_modules/.bin"
 ENV PATH="${APP_SHARED_BIN}:${PATH}"
 ENV LOGS="/logs/uotapp"
 
 RUN mkdir -p \
         "${APP_DIR}" \
+        "${APP_DIR_SECRETS}" \
         "${APP_FRONTEND_DIR}" \
         "${APP_BACKEND_DIR}" \
         "${APP_SHARED_DIR}" \
+        "${APP_POSTGRES_DIR}" \
         "${LOGS}" \
     && chown -R "${APP_UID}":"${APP_GID}" "${APP_ROOT}" \
     && chown -R "${APP_UID}":"${APP_GID}" "${LOGS}"
@@ -50,14 +66,23 @@ USER "${APP_UID}":"${APP_GID}"
 RUN cd "$APP_SHARED_DIR" && \
     yarn add -g nodemon sequelize-cli
 
-FROM base AS builder
+COPY --chmod=777 ./frontend "${APP_FRONTEND_DIR}"
 
-ARG APP_UID=1000
-ARG APP_GID=1000
+COPY --chmod=777 ./postgres "${APP_POSTGRES_DIR}"
 
-USER "${APP_UID}":"${APP_GID}"
+COPY ./backend/tls_cert.cer "${APP_DIR_SECRETS}/tls_cert.cer"
 
-COPY --chown="${APP_UID}":"${APP_GID}" ./frontend/package.json "${APP_FRONTEND_DIR}/package.json"
+COPY ./backend/tls_key.key "${APP_DIR_SECRETS}/tls_key.key"
+
+COPY ./backend/ca_bundle.pem "${APP_DIR_SECRETS}/ca_bundle.pem"
+
+COPY ./backend/pubkey.key "${APP_DIR_SECRETS}/pubkey.key"
+
+#RUN npm install --save-dev @babel/preset-react
+#RUN npm install --save-dev @babel/preset-env
+#RUN npm install @babel/plugin-syntax-jsx
+RUN npm install "${APP_FRONTEND_DIR}"/advana-module-side-nav-main 
+RUN npm install "${APP_FRONTEND_DIR}"/advana-module-tutorial-overlay-main 
 
 ARG NPM_PROFILE="dod-advana"
 ARG NPM_REGISTRY="https://npm.pkg.github.com"
@@ -71,23 +96,18 @@ RUN cd "${APP_FRONTEND_DIR}" && \
     )) && \
     yarn install --production
 
-COPY --chown="${APP_UID}":"${APP_GID}" ./frontend "${APP_FRONTEND_DIR}"
+RUN cd /opt/app-root/src/frontend/ && yarn build
 
-RUN cd "${APP_FRONTEND_DIR}" && \
-    yarn build
-
-FROM base
-
-ARG APP_UID=1000
-ARG APP_GID=1000
-
-USER "${APP_UID}":"${APP_GID}"
-
-COPY --chown="${APP_UID}":"${APP_GID}" ./backend/package.json "${APP_BACKEND_DIR}/package.json"
+#COPY --chown="${APP_UID}":"${APP_GID}" ./backend/package.json "${APP_BACKEND_DIR}/package.json"
 
 ARG NPM_PROFILE="dod-advana"
 ARG NPM_REGISTRY="https://npm.pkg.github.com"
 ARG NPM_AUTH_TOKEN=""
+
+COPY --chown="${APP_UID}":"${APP_GID}" ./backend "${APP_BACKEND_DIR}"
+
+RUN npm install "${APP_BACKEND_DIR}"/advana-module-logger-main 
+RUN npm install "${APP_BACKEND_DIR}"/advana-module-api-auth-main
 
 RUN cd "${APP_BACKEND_DIR}" && \
     ([ -n "$NPM_AUTH_TOKEN" ] && ( \
@@ -97,13 +117,8 @@ RUN cd "${APP_BACKEND_DIR}" && \
     )) && \
     yarn install --production
 
-COPY --chown="${APP_UID}":"${APP_GID}" ./backend "${APP_BACKEND_DIR}"
-COPY --from=builder --chown="${APP_UID}":"${APP_GID}" "${APP_FRONTEND_DIR}/build" "${APP_BACKEND_DIR}/build"
-
-RUN cd "${APP_BACKEND_DIR}"
-
 # http & https
 EXPOSE 8990 8443
-WORKDIR "${APP_BACKEND_DIR}"
-ENTRYPOINT ["node"]
-CMD ["index.js"]
+WORKDIR "${APP_DIR}"
+ENTRYPOINT ['/bin/bash', '-ec']
+CMD ['startBackend.sh; startFrontend.sh']

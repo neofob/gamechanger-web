@@ -50,6 +50,8 @@ class TextSuggestionController {
 					req.body.searchText = corrected;
 				}
 				if (suggestionsFlag === true) {
+          console.error("USER ID GOING INTO DATA PRESEARCH IS: ");
+          console.error(userId);
 					const data_presearch = await this.getPresearchSuggestion({ ...req.body, index }, userId);
 					try {
 						presearchTitle = this.getPreTitleCorrected(data_presearch.responses[0].hits.hits);

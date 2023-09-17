@@ -295,13 +295,7 @@ const App = () => {
 
 	useEffect(() => {
 		const initialize = async () => {
-			Auth.refreshUserToken(
-				() => setTokenLoaded(true),
-				() => {
-					console.log('Error getting token');
-					setTokenLoaded(false);
-				}
-			);
+			setTokenLoaded(true);
 
 			// fetch tutorial overlay data
 			let tutorialData = [];

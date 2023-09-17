@@ -1,20 +1,11 @@
 export default {
-	HOME_APP_BASE_URL: window?.__env__?.REACT_APP_HOME_APP_BASE_URL
-		? window?.__env__?.REACT_APP_HOME_APP_BASE_URL
-		: process.env.REACT_APP_HOME_APP_BASE_URL,
+	HOME_APP_BASE_URL: "http://localhost:8080",
 	DASHBOARD_DEFAULT_SYSTEM: 'GFEBS',
-	API_URL: window?.__env__?.REACT_APP_BACKEND_URL
-		? window?.__env__?.REACT_APP_BACKEND_URL
-		: process.env.REACT_APP_BACKEND_URL,
-	ROOT_CLONE: window?.__env__?.REACT_APP_ROOT_CLONE
-		? window?.__env__?.REACT_APP_ROOT_CLONE
-		: process.env.REACT_APP_ROOT_CLONE,
-	GLUU_SSO_ENABLED:
-		window?.__env__?.REACT_APP_GLUU_SSO !== 'disabled' && process.env.REACT_APP_GLUU_SSO !== 'disabled',
+	API_URL: "http://localhost:8990",
+	ROOT_CLONE: "gamechanger",
+	GLUU_SSO_ENABLED: 'disabled',
 	TLD: 'mil',
-	QLIK_URL: window?.__env__?.REACT_APP_QLIK_URL
-		? window?.__env__?.REACT_APP_QLIK_URL
-		: process.env.REACT_APP_QLIK_URL,
+	QLIK_URL: "http://localhost:8080",
 	GAMECHANGER_DECOUPLED_URL: 'https://gamechanger.advana.data.mil',
 	STREAMSETS_URL: 'https://streamsets',
 	CLASSIFICATION_BANNER_TEXT: 'DEVELOPMENT',
@@ -23,12 +14,11 @@ export default {
 	TRIFACTA_LINK: 'https://trifacta.advana.data.mil',
 	CONFLUENCE_LINK: 'https://wiki.advana.data.mil',
 	NFR_LINK: 'https://nfr.advana.data.mil',
-	DATA_CATALOG_LINK: window?.__env__?.REACT_APP_DATA_CATALOG_LINK
-		? window?.__env__?.REACT_APP_DATA_CATALOG_LINK
-		: process.env.REACT_APP_DATA_CATALOG_LINK,
-	MATOMO_LINK: window?.__env__?.REACT_APP_MATOMO_LINK
-		? window?.__env__?.REACT_APP_MATOMO_LINK
-		: process.env.REACT_APP_MATOMO_LINK,
+	DATA_CATALOG_LINK: "http://data-catalog.local:8443",
+  MATOMO_LINK: 'https://matomo',
+//	MATOMO_LINK: window?.__env__?.REACT_APP_MATOMO_LINK
+//		? window?.__env__?.REACT_APP_MATOMO_LINK
+//		: process.env.REACT_APP_MATOMO_LINK,
 	MATOMO_SITE_ID: window?.__env__?.REACT_APP_MATOMO_SITE_ID
 		? window?.__env__?.REACT_APP_MATOMO_SITE_ID
 		: process.env.REACT_APP_MATOMO_SITE_ID
@@ -48,12 +38,6 @@ export default {
 		SHOW_DATERANGES: true,
 		SHOW_SOURCE_TRACKER: false,
 	},
-	USER_TOKEN_ENDPOINT: `${
-		window?.__env__?.REACT_APP_BACKEND_URL
-			? window?.__env__?.REACT_APP_BACKEND_URL
-			: process.env.REACT_APP_BACKEND_URL
-	}/api/auth/token`,
-	JEXNET_LINK: window?.__env__?.REACT_APP_JEXNET_LINK
-		? window?.__env__?.REACT_APP_JEXNET_LINK
-		: process.env.REACT_APP_JEXNET_LINK,
+	USER_TOKEN_ENDPOINT: "http://localhost:8080/api/auth/token",
+	JEXNET_LINK: "http://localhost:8080",
 };

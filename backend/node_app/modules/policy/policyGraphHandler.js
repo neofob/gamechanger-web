@@ -196,6 +196,9 @@ class PolicyGraphHandler extends GraphHandler {
 
 	async callFunctionHelper(req, userId) {
 		const { functionName } = req.body;
+  
+    this.logger.info(userId);
+    this.logger.info(req);
 
 		switch (functionName) {
 			case 'getDataForSearch':
@@ -699,15 +702,23 @@ class PolicyGraphHandler extends GraphHandler {
 			const [parsedQuery, searchTerms] = this.searchUtility.getEsSearchTerms(searchBody);
 			searchBody.searchTerms = searchTerms;
 			searchBody.parsedQuery = parsedQuery;
-
+      
+      this.logger.info(searchBody.searchTerms,"SEARCH BODY TERMS IS: ");
+      this.logger.info(searchBody.parsedQuery,"SEARCH BODY PARSED QUERY IS: ");
+      this.logger.info(userId,"USER ID IS: ");
 			const esQuery = this.searchUtility.getElasticsearchQuery(searchBody, userId);
 
 			let clientObj = this.searchUtility.getESClient(cloneData.clone_name, permissions);
-
+      this.logger.info(cloneData.clone_name);
+      this.logger.info(permissions);
+      this.logger.info(clientObj.esClientName);
+      this.logger.info(clientObj.esIndex);
+      this.logger.info(esQuery);
 			const esResults = await this.dataLibrary.queryElasticSearch(
 				clientObj.esClientName,
-				clientObj.esIndex,
-				esQuery
+				'gamechanger',
+				esQuery,
+        userId
 			);
 
 			if (esResults?.body?.hits?.total?.value > 0) {

@@ -29,7 +29,7 @@ services:
 
 networks:
   app-net:
-    name: "${COMPOSE_PROJECT_NAME:-gc-dev}-network"
+    name: "gamechanger-network"
 
 volumes:
     mysql:

@@ -85,10 +85,13 @@ const checkOldTokens = async (userTokenOld, tokenTimeoutOld, csrfHash, req, redi
 };
 
 const checkUser = async (req, sessUser) => {
-	let user = await User.findOne({ where: { user_id: getUserIdFromSAMLUserId(req) }, raw: true });
+  console.error("USER ID FROM SAML USER ID");
+  console.error(getUserIdFromSAMLUserId(req));
+	let user = await User.findOne({ where: { username: getUserIdFromSAMLUserId(req) }, raw: true });
 	if (!user || user === null) {
+    console.error("I DID NOT FID A USER");
 		await userController.updateOrCreateUserHelper(sessUser);
-		user = await User.findOne({ where: { user_id: getUserIdFromSAMLUserId(req) }, raw: true });
+		user = await User.findOne({ where: { username: getUserIdFromSAMLUserId(req) }, raw: true });
 	}
 	return user;
 };

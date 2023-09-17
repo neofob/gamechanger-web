@@ -138,7 +138,7 @@ class UserController {
 
 		try {
 			userId = req.session?.user?.id || req.get('SSL_CLIENT_S_DN_CN');
-			const user_id = getUserIdFromSAMLUserId(req);
+			const username = getUserIdFromSAMLUserId(req);
 
 			const user = await this.user.findOne({
 				attributes: [
@@ -156,7 +156,7 @@ class UserController {
 					'job_title',
 					'extra_fields',
 				],
-				where: { user_id: user_id },
+				where: { username: username },
 				raw: true,
 			});
 			return res.status(200).send(user);
@@ -171,10 +171,10 @@ class UserController {
 
 		try {
 			userId = req.session?.user?.id || req.get('SSL_CLIENT_S_DN_CN');
-			const user_id = getUserIdFromSAMLUserId(req);
+			const username = getUserIdFromSAMLUserId(req);
 			const { userData } = req.body;
 
-			const user = await this.user.findOne({ where: { user_id: user_id } });
+			const user = await this.user.findOne({ where: { username: username } });
 
 			if (user) {
 				user.first_name = userData.first_name;
@@ -206,10 +206,10 @@ class UserController {
 
 		try {
 			userId = req.session?.user?.id || req.get('SSL_CLIENT_S_DN_CN');
-			const user_id = getUserIdFromSAMLUserId(req);
+			const username = getUserIdFromSAMLUserId(req);
 			const { userData } = req.body;
 
-			const user = await this.user.findOne({ where: { user_id: user_id } });
+			const user = await this.user.findOne({ where: { username: username } });
 
 			if (user) {
 				user.first_name = userData.first_name;
@@ -298,10 +298,10 @@ class UserController {
 
 		try {
 			userId = req.session.user?.id || req.get('SSL_CLIENT_S_DN_CN');
-			const user_id = getUserIdFromSAMLUserId(userId, false);
+			const username = getUserIdFromSAMLUserId(userId, false);
 			const { clone } = req.body;
 
-			const user = await this.user.findOne({ where: { user_id: user_id }, raw: true });
+			const user = await this.user.findOne({ where: { username: username }, raw: true });
 
 			if (user && user !== null) {
 				if (user.extra_fields.hasOwnProperty('clones_visited')) {
@@ -327,34 +327,34 @@ class UserController {
 		try {
 			userId = req.session?.user?.id || req.get('SSL_CLIENT_S_DN_CN');
 
-			const user_id = getUserIdFromSAMLUserId(req);
+			const username = getUserIdFromSAMLUserId(req);
 			let user = await this.user.findOne({
-				where: { user_id: user_id },
+				where: { username: username },
 				defaults: {
-					user_id: user_id,
+					username: username,
 					notifications: {},
 				},
 				raw: true,
 			});
 			if (user) {
 				const favorite_documents = await this.favoriteDocument.findAll({
-					where: { user_id: user.user_id },
+					where: { username: user.username },
 					raw: true,
 				});
 
 				const favorite_searches = await this.favoriteSearch.findAll({
-					where: { user_id: user.user_id },
+					where: { username: user.username },
 					order: [['id', 'DESC']],
 					raw: true,
 				});
 
 				const favorite_topics = await this.favoriteTopic.findAll({
-					where: { user_id: user.user_id },
+					where: { username: user.username },
 					raw: true,
 				});
 
 				const favorite_groups = await this.favoriteGroup.findAll({
-					where: { user_id: user.user_id },
+					where: { username: user.username },
 					raw: true,
 				});
 
@@ -371,13 +371,13 @@ class UserController {
 				user.favorite_groups = favorite_groups;
 
 				const favorite_organizations = await this.favoriteOrganization.findAll({
-					where: { user_id: user.user_id },
+					where: { username: user.username },
 					raw: true,
 				});
 
 				const search_history = await this.gcHistory.findAll({
 					where: {
-						user_id: user.user_id,
+						user_id: user.username,
 						is_tutorial_search: false,
 						tiny_url: { [Op.ne]: null },
 					},
@@ -388,10 +388,10 @@ class UserController {
 				const export_history = await this.exportHistory.findAll({
 					raw: true,
 					limit: 5,
-					where: { user_id: user.user_id },
+					where: { username: user.username },
 					order: [['updatedAt', 'DESC']],
 				});
-				const hashed_user = this.sparkMD5.hash(user.user_id);
+				const hashed_user = this.sparkMD5.hash(user.username);
 				const pdf_opened = await this.appStats.getUserLastOpened(hashed_user);
 				user.pdf_opened = pdf_opened;
 
@@ -560,7 +560,7 @@ class UserController {
 					user.search_history = [];
 				}
 
-				const api_key = await this.externalAPI.getAPIKey(user_id);
+				const api_key = await this.externalAPI.getAPIKey(username);
 				user.api_key = api_key;
 
 				if (export_history) {
@@ -570,7 +570,7 @@ class UserController {
 				}
 			} else {
 				user = {
-					user_id: user_id,
+					username: username,
 					notifications: {},
 				};
 				user.favorite_documents = [];
@@ -603,30 +603,39 @@ class UserController {
 	}
 
 	async updateOrCreateUserHelper(userData, fromApp = false) {
-		let user_id = 'WebApp';
+    console.error("I GOT TO UPDATEORCREATEUSERHELPER!!!");
+		let username = 'WebApp';
 		try {
 			let foundItem;
 			if (fromApp) {
+        console.error("FROM APP");
+        console.error(userData.id);
 				foundItem = await this.user.findOne({ where: { id: userData.id }, raw: true });
 			} else {
-				user_id = getUserIdFromSAMLUserId(userData.id, false);
+        console.error("NOT FROM APP");
+        console.error(userData.id);
+				username = getUserIdFromSAMLUserId(userData.id, false);
 				foundItem = await this.user.findOne({
-					where: { user_id },
+					where: { username },
 					raw: true,
 				});
 			}
 
 			if (!foundItem) {
 				if (fromApp) {
+          console.error("FROM APP CREATING USER");
+          console.error(userData);
 					await this.user.create(userData);
 				} else {
 					// Migrate the users data from the old GC table
+          console.error("NOT FROM APP CREATING USER");
+          console.error(userData);
 					const oldGCUserInfo = await this.syncUserHelper(
 						{
-							user_id,
+							username,
 							cn: userData.cn,
 						},
-						user_id
+						username
 					);
 
 					const tmpExtraFields = { gamechanger: oldGCUserInfo.policy || {} };
@@ -640,7 +649,7 @@ class UserController {
 					};
 
 					const newUser = {
-						user_id: user_id,
+						username: username,
 						first_name: oldGCUserInfo.jbook
 							? oldGCUserInfo.jbook.first_name &&
 							  oldGCUserInfo.jbook.first_name !== null &&
@@ -744,13 +753,13 @@ class UserController {
 					if ((!tempUser.cn || tempUser.cn === null || tempUser.cn === '') && userData.cn)
 						tempUser.cn = userData.cn;
 
-					await this.user.update(tempUser, { where: { user_id } });
+					await this.user.update(tempUser, { where: { username } });
 				}
 			}
 
 			return true;
 		} catch (err) {
-			this.logger.error(err, '2XY95Z7', user_id);
+			this.logger.error(err, '2XY95Z7', username);
 			return false;
 		}
 	}
@@ -776,12 +785,12 @@ class UserController {
 
 		try {
 			userId = req.session?.user?.id || req.get('SSL_CLIENT_S_DN_CN');
-			const user_id = getUserIdFromSAMLUserId(req);
+			const username = getUserIdFromSAMLUserId(req);
 			const { email, permissions } = req.body;
 			const userRequest = await this.userRequest.findOne({ where: { email: email }, raw: true });
 
 			if (userRequest && !userRequest.is_activated) {
-				const user = await this.user.findOne({ where: { user_id: user_id }, raw: true });
+				const user = await this.user.findOne({ where: { username: username }, raw: true });
 
 				if (user) {
 					user.organization = userRequest.organization;
@@ -849,8 +858,8 @@ class UserController {
 	async syncUserHelper(user, userId) {
 		try {
 			const decoupledUserIdHashed = this.sparkMD5.hash(user.cn);
-			const coupledUserIDWithAtMilHashed = this.sparkMD5.hash(`${user.user_id}@mil`);
-			const coupledUserIDHashed = this.sparkMD5.hash(user.user_id);
+			const coupledUserIDWithAtMilHashed = this.sparkMD5.hash(`${user.username}@mil`);
+			const coupledUserIDHashed = this.sparkMD5.hash(user.username);
 
 			const hashedIds = [decoupledUserIdHashed, coupledUserIDWithAtMilHashed, coupledUserIDHashed];
 
@@ -869,7 +878,7 @@ class UserController {
 			if (oldUsers.length > 0) {
 				// Combine basic user data and delete the old user
 				for (const oldUser of oldUsers) {
-					const nonHashedIds = [user.cn, `${user.user_id}@mil`];
+					const nonHashedIds = [user.cn, `${user.username}@mil`];
 					const allIds = hashedIds.concat(nonHashedIds);
 
 					// API Key Requests
@@ -884,7 +893,7 @@ class UserController {
 
 					try {
 						for (const apiKeyRequest of foundRecords) {
-							apiKeyRequest.username = user.user_id;
+							apiKeyRequest.username = user.username;
 							await this.apiKeyRequests.update(apiKeyRequest, { where: { id: apiKeyRequest.id } });
 						}
 					} catch (error) {
@@ -903,7 +912,7 @@ class UserController {
 
 					try {
 						for (const apiKey of foundRecords) {
-							apiKey.username = user.user_id;
+							apiKey.username = user.username;
 							await this.apiKey.update(apiKey, { where: { id: apiKey.id } });
 						}
 					} catch (error) {
@@ -913,7 +922,7 @@ class UserController {
 					// Export History
 					foundRecords = await this.exportHistory.findAll({
 						where: {
-							user_id: {
+							username: {
 								[Op.in]: allIds,
 							},
 						},
@@ -922,7 +931,7 @@ class UserController {
 
 					try {
 						for (const history of foundRecords) {
-							history.user_id = user.user_id;
+							history.username = user.username;
 							await this.exportHistory.update(history, { where: { id: history.id } });
 						}
 					} catch (error) {
@@ -932,7 +941,7 @@ class UserController {
 					// Favorite Documents
 					foundRecords = await this.favoriteDocument.findAll({
 						where: {
-							user_id: {
+							username: {
 								[Op.in]: allIds,
 							},
 						},
@@ -941,7 +950,7 @@ class UserController {
 
 					try {
 						for (const favorite of foundRecords) {
-							favorite.user_id = user.user_id;
+							favorite.username = user.username;
 							await this.favoriteDocument.update(favorite, { where: { id: favorite.id } });
 						}
 					} catch (error) {
@@ -951,7 +960,7 @@ class UserController {
 					// Favorite Documents Group
 					foundRecords = await this.favoriteDocumentsGroup.findAll({
 						where: {
-							user_id: {
+							username: {
 								[Op.in]: allIds,
 							},
 						},
@@ -960,7 +969,7 @@ class UserController {
 
 					try {
 						for (const favorite of foundRecords) {
-							favorite.user_id = user.user_id;
+							favorite.username = user.username;
 							await this.favoriteDocumentsGroup.update(favorite, { where: { id: favorite.id } });
 						}
 					} catch (error) {
@@ -970,7 +979,7 @@ class UserController {
 					// Favorite Groups
 					foundRecords = await this.favoriteGroup.findAll({
 						where: {
-							user_id: {
+							username: {
 								[Op.in]: allIds,
 							},
 						},
@@ -979,7 +988,7 @@ class UserController {
 
 					try {
 						for (const favorite of foundRecords) {
-							favorite.user_id = user.user_id;
+							favorite.username = user.username;
 							await this.favoriteGroup.update(favorite, { where: { id: favorite.id } });
 						}
 					} catch (error) {
@@ -989,7 +998,7 @@ class UserController {
 					// Favorite Organizations
 					foundRecords = await this.favoriteOrganization.findAll({
 						where: {
-							user_id: {
+							username: {
 								[Op.in]: allIds,
 							},
 						},
@@ -998,7 +1007,7 @@ class UserController {
 
 					try {
 						for (const favorite of foundRecords) {
-							favorite.user_id = user.user_id;
+							favorite.username = user.username;
 							await this.favoriteOrganization.update(favorite, { where: { id: favorite.id } });
 						}
 					} catch (error) {
@@ -1008,7 +1017,7 @@ class UserController {
 					// Favorite Searches
 					foundRecords = await this.favoriteSearch.findAll({
 						where: {
-							user_id: {
+							username: {
 								[Op.in]: allIds,
 							},
 						},
@@ -1017,7 +1026,7 @@ class UserController {
 
 					try {
 						for (const favorite of foundRecords) {
-							favorite.user_id = user.user_id;
+							favorite.username = user.username;
 							await this.favoriteSearch.update(favorite, { where: { id: favorite.id } });
 						}
 					} catch (error) {
@@ -1027,7 +1036,7 @@ class UserController {
 					// Favorite Topics
 					foundRecords = await this.favoriteTopic.findAll({
 						where: {
-							user_id: {
+							username: {
 								[Op.in]: allIds,
 							},
 						},
@@ -1036,7 +1045,7 @@ class UserController {
 
 					try {
 						for (const favorite of foundRecords) {
-							favorite.user_id = user.user_id;
+							favorite.username = user.username;
 							await this.favoriteTopic.update(favorite, { where: { id: favorite.id } });
 						}
 					} catch (error) {
@@ -1047,7 +1056,7 @@ class UserController {
 					try {
 						foundRecords = await this.feedback.findAll({
 							where: {
-								user_id: {
+								username: {
 									[Op.in]: allIds,
 								},
 							},
@@ -1059,7 +1068,7 @@ class UserController {
 
 					try {
 						for (const feedback of foundRecords) {
-							feedback.user_id = user.user_id;
+							feedback.username = user.username;
 							await this.feedback.update(feedback, { where: { id: feedback.id } });
 						}
 					} catch (error) {
@@ -1078,7 +1087,7 @@ class UserController {
 
 					try {
 						for (const assist of foundRecords) {
-							assist.user_id = user.user_id;
+							assist.username = user.username;
 							await this.gcAssists.update(assist, { where: { id: assist.id } });
 						}
 					} catch (error) {
@@ -1088,7 +1097,7 @@ class UserController {
 					// GC History
 					foundRecords = await this.gcHistory.findAll({
 						where: {
-							user_id: {
+							username: {
 								[Op.in]: allIds,
 							},
 						},
@@ -1097,7 +1106,7 @@ class UserController {
 
 					try {
 						for (const history of foundRecords) {
-							history.user_id = user.user_id;
+							history.username = user.username;
 							await this.gcHistory.update(history, { where: { id: history.id } });
 						}
 					} catch (error) {
@@ -1114,7 +1123,7 @@ class UserController {
 							is_internal: oldUser.is_internal,
 							is_admin: oldUser.is_admin,
 						};
-						finalOldUser.user_id = user.user_id;
+						finalOldUser.username = user.username;
 						delete finalOldUser.id;
 					} else {
 						if (oldUser.is_beta != null) finalOldUser['gamechanger'].is_beta = oldUser.is_beta;
@@ -1138,7 +1147,7 @@ class UserController {
 
 			oldUsers = await this.jbookUser.findOne({
 				where: {
-					user_id: user.user_id,
+					username: user.username,
 				},
 				raw: true,
 			});
@@ -1161,10 +1170,10 @@ class UserController {
 		try {
 			userId = req.session?.user?.id || req.get('SSL_CLIENT_S_DN_CN');
 
-			const user_id = getUserIdFromSAMLUserId(req);
+			const username = getUserIdFromSAMLUserId(req);
 
 			const user = await this.gcUser.findOne({
-				where: { user_id: user_id },
+				where: { user_id: username },
 				raw: true,
 			});
 
@@ -1183,7 +1192,7 @@ class UserController {
 		let userId = 'webapp_unknown';
 		try {
 			userId = req.session?.user?.id || req.get('SSL_CLIENT_S_DN_CN');
-			const user_id = getUserIdFromSAMLUserId(req);
+			const username = getUserIdFromSAMLUserId(req);
 
 			await this.gcUser.update(
 				{
@@ -1192,7 +1201,7 @@ class UserController {
 				},
 				{
 					where: {
-						user_id: user_id,
+						user_id: username,
 					},
 				}
 			);
@@ -1322,12 +1331,12 @@ class UserController {
 		const userId = req.session?.user?.id || req.get('SSL_CLIENT_S_DN_CN');
 
 		try {
-			const user_id = getUserIdFromSAMLUserId(req);
+			const username = getUserIdFromSAMLUserId(req);
 
 			await this.sequelize.transaction(async (t) => {
 				const userData = await this.gcUser.findOne({
 					where: {
-						user_id: user_id,
+						user_id: username,
 					},
 					transaction: t,
 					// there is a race condition between this select and the notification json modification
@@ -1348,7 +1357,7 @@ class UserController {
 						{ notifications: userData.notifications },
 						{
 							where: {
-								user_id: user_id,
+								user_id: username,
 							},
 							transaction: t,
 						}
@@ -1368,11 +1377,11 @@ class UserController {
 		try {
 			userId = req.session?.user?.id || req.get('SSL_CLIENT_S_DN_CN');
 
-			const user_id = getUserIdFromSAMLUserId(req);
+			const username = getUserIdFromSAMLUserId(req);
 
 			await this.gcUser.update(
 				{ api_requests: Sequelize.literal('api_requests - 1') },
-				{ where: { user_id: user_id } }
+				{ where: { user_id: username } }
 			);
 
 			res.status(200).send();
@@ -1410,14 +1419,14 @@ class UserController {
 			userId = req.session?.user?.id || req.get('SSL_CLIENT_S_DN_CN');
 			const { clone_name } = req.body;
 
-			const user_id = getUserIdFromSAMLUserId(req);
+			const username = getUserIdFromSAMLUserId(req);
 
 			let ids = await this.gcHistory.findAll({
 				attributes: [[Sequelize.fn('MAX', Sequelize.col('id')), 'id']],
 				where: {
 					clone_name,
 					had_error: 'f',
-					user_id: user_id,
+					user_id: username,
 				},
 				group: ['search'],
 				order: [[Sequelize.col('id'), 'DESC']],
